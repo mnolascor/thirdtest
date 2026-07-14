@@ -17,58 +17,79 @@ app.use(cors());
 app.use(express.static('public'));
 
 // Database Initialization
+let dbInitializationPromise = null;
+
 async function initializeDatabase() {
-  try {
-    // Create users table
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(50) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'worker'))
-      )
-    `);
+  // Create users table
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      username VARCHAR(50) UNIQUE NOT NULL,
+      password VARCHAR(255) NOT NULL,
+      role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'worker'))
+    )
+  `);
 
-    // Create services table
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS services (
-        id SERIAL PRIMARY KEY,
-        plate VARCHAR(20) NOT NULL,
-        photo_url TEXT,
-        service_type VARCHAR(100) NOT NULL,
-        price DECIMAL(10, 2) NOT NULL,
-        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'delivered')),
-        worker_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+  // Create services table
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS services (
+      id SERIAL PRIMARY KEY,
+      plate VARCHAR(20) NOT NULL,
+      photo_url TEXT,
+      service_type VARCHAR(100) NOT NULL,
+      price DECIMAL(10, 2) NOT NULL,
+      status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'delivered')),
+      worker_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
 
-    console.log('Database tables verified/created successfully.');
+  console.log('Database tables verified/created successfully.');
 
-    // Seed default users if users table is empty
-    const usersCount = await db.query('SELECT COUNT(*) FROM users');
-    if (parseInt(usersCount.rows[0].count) === 0) {
-      console.log('Seeding default users...');
-      const adminPasswordHash = bcrypt.hashSync('admin123', 10);
-      const workerPasswordHash = bcrypt.hashSync('worker123', 10);
+  // Seed default users if users table is empty
+  const usersCount = await db.query('SELECT COUNT(*) FROM users');
+  if (parseInt(usersCount.rows[0].count) === 0) {
+    console.log('Seeding default users...');
+    const adminPasswordHash = bcrypt.hashSync('admin123', 10);
+    const workerPasswordHash = bcrypt.hashSync('worker123', 10);
 
-      await db.query(
-        'INSERT INTO users (username, password, role) VALUES ($1, $2, $3)',
-        ['admin', adminPasswordHash, 'admin']
-      );
-      await db.query(
-        'INSERT INTO users (username, password, role) VALUES ($1, $2, $3)',
-        ['worker', workerPasswordHash, 'worker']
-      );
-      console.log('Default users seeded: admin/admin123 and worker/worker123');
-    }
-  } catch (error) {
-    console.error('Error during database initialization:', error);
+    await db.query(
+      'INSERT INTO users (username, password, role) VALUES ($1, $2, $3)',
+      ['admin', adminPasswordHash, 'admin']
+    );
+    await db.query(
+      'INSERT INTO users (username, password, role) VALUES ($1, $2, $3)',
+      ['worker', workerPasswordHash, 'worker']
+    );
+    console.log('Default users seeded: admin/admin123 and worker/worker123');
   }
 }
 
-// Initialize tables when backend starts
-initializeDatabase();
+// Function to get/retry database connection setup
+function getDbConnection() {
+  if (!dbInitializationPromise) {
+    dbInitializationPromise = initializeDatabase().catch(err => {
+      console.error('Failed to initialize database. Will retry on next request.', err);
+      dbInitializationPromise = null; // Reset promise to allow retrying
+      throw err;
+    });
+  }
+  return dbInitializationPromise;
+}
+
+// Pre-initialize in background on load
+getDbConnection().catch(() => {});
+
+// Middleware to block API requests until DB tables are ready
+app.use(async (req, res, next) => {
+  try {
+    await getDbConnection();
+    next();
+  } catch (error) {
+    console.error('Database connection error blocking request:', error);
+    res.status(500).json({ error: 'La base de datos no está disponible. Por favor intente más tarde.' });
+  }
+});
 
 // JWT Authentication Middleware
 function authenticateToken(req, res, next) {
