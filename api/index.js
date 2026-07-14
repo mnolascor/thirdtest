@@ -39,9 +39,31 @@ async function initializeDatabase() {
       service_type VARCHAR(100) NOT NULL,
       price DECIMAL(10, 2) NOT NULL,
       status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'delivered')),
+      payment_method VARCHAR(50) DEFAULT 'efectivo',
+      vehicle_type VARCHAR(50) DEFAULT 'Auto',
       worker_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
+  `);
+
+  // Migration: Add payment_method if not exists
+  await db.query(`
+    DO $$ 
+    BEGIN 
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='services' AND column_name='payment_method') THEN
+        ALTER TABLE services ADD COLUMN payment_method VARCHAR(50) DEFAULT 'efectivo';
+      END IF;
+    END $$;
+  `);
+
+  // Migration: Add vehicle_type if not exists
+  await db.query(`
+    DO $$ 
+    BEGIN 
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='services' AND column_name='vehicle_type') THEN
+        ALTER TABLE services ADD COLUMN vehicle_type VARCHAR(50) DEFAULT 'Auto';
+      END IF;
+    END $$;
   `);
 
   console.log('Database tables verified/created successfully.');
@@ -205,17 +227,25 @@ app.get('/api/services', authenticateToken, async (req, res) => {
 
 // POST /api/services
 app.post('/api/services', authenticateToken, async (req, res) => {
-  const { plate, photo_url, service_type, price } = req.body;
+  const { plate, photo_url, service_type, price, payment_method, vehicle_type } = req.body;
   if (!plate || !service_type || price === undefined) {
     return res.status(400).json({ error: 'Placa, tipo de servicio y precio son requeridos' });
   }
 
   try {
     const result = await db.query(
-      `INSERT INTO services (plate, photo_url, service_type, price, status, worker_id)
-       VALUES ($1, $2, $3, $4, 'pending', $5)
+      `INSERT INTO services (plate, photo_url, service_type, price, status, payment_method, vehicle_type, worker_id)
+       VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7)
        RETURNING *`,
-      [plate.toUpperCase().trim(), photo_url, service_type, price, req.user.id]
+      [
+        plate.toUpperCase().trim(), 
+        photo_url, 
+        service_type, 
+        price, 
+        payment_method || 'efectivo', 
+        vehicle_type || 'Auto', 
+        req.user.id
+      ]
     );
 
     res.status(201).json(result.rows[0]);
@@ -228,7 +258,7 @@ app.post('/api/services', authenticateToken, async (req, res) => {
 // PUT /api/services/:id
 app.put('/api/services/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const { status, plate, service_type, price, worker_id } = req.body;
+  const { status, plate, service_type, price, worker_id, payment_method, vehicle_type } = req.body;
 
   try {
     // Check if service exists
@@ -269,6 +299,14 @@ app.put('/api/services/:id', authenticateToken, async (req, res) => {
       if (worker_id !== undefined) {
         fields.push(`worker_id = $${valIndex++}`);
         values.push(worker_id === null ? null : parseInt(worker_id));
+      }
+      if (payment_method !== undefined) {
+        fields.push(`payment_method = $${valIndex++}`);
+        values.push(payment_method);
+      }
+      if (vehicle_type !== undefined) {
+        fields.push(`vehicle_type = $${valIndex++}`);
+        values.push(vehicle_type);
       }
     }
 

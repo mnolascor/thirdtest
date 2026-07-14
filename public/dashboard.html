@@ -50,7 +50,7 @@
           </div>
           <div class="kpi-info">
             <h4>Ganancias Hoy</h4>
-            <p id="kpiRevenueToday">$0.00</p>
+            <p id="kpiRevenueToday">S/. 0.00</p>
           </div>
         </div>
         
@@ -70,7 +70,7 @@
           </div>
           <div class="kpi-info">
             <h4>Ventas Totales</h4>
-            <p id="kpiTotalRevenue">$0.00</p>
+            <p id="kpiTotalRevenue">S/. 0.00</p>
           </div>
         </div>
 
@@ -151,8 +151,10 @@
                 <tr>
                   <th>Placa</th>
                   <th>Foto Placa</th>
+                  <th>Vehículo</th>
                   <th>Servicio</th>
                   <th>Precio</th>
+                  <th>Pago</th>
                   <th>Empleado</th>
                   <th>Estado</th>
                   <th>Fecha y Hora</th>
@@ -293,9 +295,9 @@
             <label class="form-label" for="serviceType">Tipo de Lavado</label>
             <div class="input-container">
               <select id="serviceType" onchange="handleServiceTypeChange(this)" required>
-                <option value="Lavado Simple" data-price="15.00">Lavado Simple - $15.00</option>
-                <option value="Lavado y Aspirado" data-price="25.00">Lavado y Aspirado - $25.00</option>
-                <option value="Lavado Premium" data-price="45.00">Lavado Premium - $45.00</option>
+                <option value="Lavado Simple" data-price="15.00">Lavado Simple - S/. 15.00</option>
+                <option value="Lavado y Aspirado" data-price="25.00">Lavado y Aspirado - S/. 25.00</option>
+                <option value="Lavado Premium" data-price="45.00">Lavado Premium - S/. 45.00</option>
                 <option value="custom">Personalizado / Otro</option>
               </select>
               <span class="input-icon">
@@ -315,8 +317,39 @@
             </div>
           </div>
 
+          <!-- Tipo de Vehículo Selector -->
           <div class="form-group">
-            <label class="form-label" for="price">Precio ($ USD)</label>
+            <label class="form-label" for="vehicleType">Tipo de Vehículo</label>
+            <div class="input-container">
+              <select id="vehicleType" required>
+                <option value="Auto">Auto</option>
+                <option value="Camioneta">Camioneta</option>
+                <option value="Moto">Moto</option>
+                <option value="Otro">Otro</option>
+              </select>
+              <span class="input-icon">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2" ry="2"></rect><path d="M7 15h0M17 15h0"></path><path d="M2 9h20M6 5v4M18 5v4"></path></svg>
+              </span>
+            </div>
+          </div>
+
+          <!-- Método de Pago Selector -->
+          <div class="form-group">
+            <label class="form-label" for="paymentMethod">Método de Pago</label>
+            <div class="input-container">
+              <select id="paymentMethod" required>
+                <option value="efectivo">Efectivo</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="yape_plin">Yape / Plin</option>
+              </select>
+              <span class="input-icon">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+              </span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="price">Precio (S/.)</label>
             <div class="input-container">
               <input type="number" id="price" placeholder="15.00" step="0.01" min="0" value="15.00" required>
               <span class="input-icon">
@@ -343,8 +376,10 @@
               <tr>
                 <th>Placa</th>
                 <th>Foto</th>
+                <th>Vehículo</th>
                 <th>Servicio</th>
                 <th>Precio</th>
+                <th>Pago</th>
                 <th>Estado</th>
                 <th>Acción</th>
               </tr>

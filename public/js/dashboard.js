@@ -59,9 +59,9 @@ async function refreshAdminStats() {
     const data = await response.json();
 
     // Fill KPIs
-    document.getElementById('kpiRevenueToday').textContent = `$${data.revenueToday.toFixed(2)}`;
+    document.getElementById('kpiRevenueToday').textContent = `S/. ${data.revenueToday.toFixed(2)}`;
     document.getElementById('kpiServicesToday').textContent = data.servicesToday;
-    document.getElementById('kpiTotalRevenue').textContent = `$${data.totalRevenue.toFixed(2)}`;
+    document.getElementById('kpiTotalRevenue').textContent = `S/. ${data.totalRevenue.toFixed(2)}`;
     document.getElementById('kpiTotalServices').textContent = data.totalServices;
 
     // Render charts
@@ -93,7 +93,7 @@ function renderWorkerPerformanceChart(performanceData) {
       <div class="chart-bar-group">
         <div class="chart-bar-label">
           <span>${worker.username} (${worker.services_count} serv.)</span>
-          <span style="font-weight: 700;">$${earnings.toFixed(2)}</span>
+          <span style="font-weight: 700;">S/. ${earnings.toFixed(2)}</span>
         </div>
         <div class="chart-bar-bg">
           <div class="chart-bar-fill" style="width: ${percentage}%"></div>
@@ -123,7 +123,7 @@ function renderServiceDistributionChart(distributionData) {
       <div class="chart-bar-group">
         <div class="chart-bar-label">
           <span>${item.service_type} (${item.count} serv.)</span>
-          <span style="font-weight: 700;">$${revenue.toFixed(2)}</span>
+          <span style="font-weight: 700;">S/. ${revenue.toFixed(2)}</span>
         </div>
         <div class="chart-bar-bg">
           <div class="chart-bar-fill" style="width: ${percentage}%; background: linear-gradient(90deg, var(--secondary), #10b981);"></div>
@@ -171,7 +171,7 @@ function renderServicesList(services) {
   mobileList.innerHTML = '';
 
   if (services.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center" style="color: var(--text-muted);">No se encontraron servicios</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="text-center" style="color: var(--text-muted);">No se encontraron servicios</td></tr>';
     mobileList.innerHTML = '<p class="text-center" style="color: var(--text-muted); padding: 2rem;">No se encontraron servicios</p>';
     return;
   }
@@ -197,13 +197,18 @@ function renderServicesList(services) {
       ? `<img src="${s.photo_url}" class="service-img-preview" onclick="openPhotoModal('${s.plate}', '${s.photo_url}')" alt="Foto">`
       : `<span style="color: var(--text-muted); font-size: 0.8rem;">Sin foto</span>`;
 
+    const paymentLabel = s.payment_method === 'yape_plin' ? 'Yape/Plin' : (s.payment_method ? s.payment_method.charAt(0).toUpperCase() + s.payment_method.slice(1) : 'Efectivo');
+    const vehicleLabel = s.vehicle_type || 'Auto';
+
     // Render desktop row
     const rowHtml = `
       <tr>
         <td><span class="service-plate-badge">${s.plate}</span></td>
         <td>${imgPreviewHtml}</td>
+        <td style="font-weight:600;">${vehicleLabel}</td>
         <td style="font-weight:600;">${s.service_type}</td>
-        <td style="font-weight:700;">$${parseFloat(s.price).toFixed(2)}</td>
+        <td style="font-weight:700;">S/. ${parseFloat(s.price).toFixed(2)}</td>
+        <td style="font-weight:600; color:var(--text-secondary);">${paymentLabel}</td>
         <td>${s.worker_name || 'Sin asignar'}</td>
         <td>
           <select class="filter-input" style="padding: 0.25rem 0.5rem; font-size: 0.85rem; min-width: 120px;" onchange="updateServiceStatus(${s.id}, this.value)">
@@ -228,10 +233,11 @@ function renderServicesList(services) {
           <div>
             <div class="mobile-card-plate" style="display:flex; justify-content:space-between; align-items:center;">
               <span class="service-plate-badge">${s.plate}</span>
-              <span style="font-weight:700; color:var(--text-primary);">$${parseFloat(s.price).toFixed(2)}</span>
+              <span style="font-weight:700; color:var(--text-primary);">S/. ${parseFloat(s.price).toFixed(2)}</span>
             </div>
-            <div style="font-weight:600; font-size:0.9rem; margin-top:0.25rem;">${s.service_type}</div>
-            <div class="mobile-card-meta">Asignado: ${s.worker_name || 'N/A'}</div>
+            <div style="font-weight:600; font-size:0.9rem; margin-top:0.25rem;">${s.service_type} (${vehicleLabel})</div>
+            <div class="mobile-card-meta">Pago: ${paymentLabel} | Operario: ${s.worker_name || 'N/A'}</div>
+            <div class="mobile-card-meta" style="font-size: 0.75rem;">${dateStr}</div>
           </div>
           <div style="display:flex; align-items:center; justify-content:space-between; margin-top:0.5rem; gap: 0.5rem;">
             <select class="filter-input" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; flex: 1;" onchange="updateServiceStatus(${s.id}, this.value)">
@@ -400,7 +406,7 @@ function renderWorkerServices(services) {
   mobileList.innerHTML = '';
 
   if (services.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="color: var(--text-muted);">No has registrado servicios hoy.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center" style="color: var(--text-muted);">No has registrado servicios hoy.</td></tr>';
     mobileList.innerHTML = '<p class="text-center" style="color: var(--text-muted); padding: 2rem;">No has registrado servicios hoy.</p>';
     return;
   }
@@ -427,13 +433,18 @@ function renderWorkerServices(services) {
       ? `<img src="${s.photo_url}" class="service-img-preview" onclick="openPhotoModal('${s.plate}', '${s.photo_url}')" alt="Foto">`
       : `<span style="color: var(--text-muted); font-size: 0.8rem;">Sin foto</span>`;
 
+    const paymentLabel = s.payment_method === 'yape_plin' ? 'Yape/Plin' : (s.payment_method ? s.payment_method.charAt(0).toUpperCase() + s.payment_method.slice(1) : 'Efectivo');
+    const vehicleLabel = s.vehicle_type || 'Auto';
+
     // Render desktop
     const row = `
       <tr>
         <td><span class="service-plate-badge">${s.plate}</span></td>
         <td>${imgPreviewHtml}</td>
+        <td style="font-weight: 600;">${vehicleLabel}</td>
         <td style="font-weight: 600;">${s.service_type}</td>
-        <td style="font-weight: 700;">$${parseFloat(s.price).toFixed(2)}</td>
+        <td style="font-weight: 700;">S/. ${parseFloat(s.price).toFixed(2)}</td>
+        <td style="font-weight: 600; color:var(--text-secondary);">${paymentLabel}</td>
         <td><span class="badge ${s.status}">${statusLabels[s.status]}</span></td>
         <td>${actionBtnHtml}</td>
       </tr>
@@ -448,9 +459,10 @@ function renderWorkerServices(services) {
           <div>
             <div class="mobile-card-plate" style="display:flex; justify-content:space-between; align-items:center;">
               <span class="service-plate-badge">${s.plate}</span>
-              <span style="font-weight: 700;">$${parseFloat(s.price).toFixed(2)}</span>
+              <span style="font-weight: 700;">S/. ${parseFloat(s.price).toFixed(2)}</span>
             </div>
-            <div style="font-weight: 600; font-size:0.9rem; margin-top:0.25rem;">${s.service_type}</div>
+            <div style="font-weight: 600; font-size:0.9rem; margin-top:0.25rem;">${s.service_type} (${vehicleLabel})</div>
+            <div class="mobile-card-meta">Pago: ${paymentLabel}</div>
           </div>
           <div style="display:flex; align-items:center; justify-content:space-between; margin-top:0.5rem;">
             <span class="badge ${s.status}">${statusLabels[s.status]}</span>
@@ -504,6 +516,8 @@ function setupWorkerFormEvents() {
     const plate = document.getElementById('plate').value;
     const serviceSelect = document.getElementById('serviceType');
     const price = parseFloat(document.getElementById('price').value);
+    const vehicleType = document.getElementById('vehicleType').value;
+    const paymentMethod = document.getElementById('paymentMethod').value;
     
     let service_type = serviceSelect.value;
     if (service_type === 'custom') {
@@ -527,6 +541,8 @@ function setupWorkerFormEvents() {
           plate,
           service_type,
           price,
+          vehicle_type: vehicleType,
+          payment_method: paymentMethod,
           photo_url: capturedPhotoBase64
         })
       });
@@ -543,6 +559,10 @@ function setupWorkerFormEvents() {
       // Select first service option and trigger price update
       serviceSelect.selectedIndex = 0;
       handleServiceTypeChange(serviceSelect);
+
+      // Reset select dropdowns
+      document.getElementById('vehicleType').selectedIndex = 0;
+      document.getElementById('paymentMethod').selectedIndex = 0;
 
       // Reload list
       await loadWorkerServices();
