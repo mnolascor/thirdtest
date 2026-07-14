@@ -21,7 +21,7 @@ async function initializeDatabase() {
   try {
     // Create users table
     await db.query(`
-      CREATE TABLE IF NOT EXISTS users (
+      CREATE TABLE IF NOT EXISTS factory.users (
         id SERIAL PRIMARY KEY,
         username VARCHAR(50) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
@@ -31,7 +31,7 @@ async function initializeDatabase() {
 
     // Create services table
     await db.query(`
-      CREATE TABLE IF NOT EXISTS services (
+      CREATE TABLE IF NOT EXISTS factory.services (
         id SERIAL PRIMARY KEY,
         plate VARCHAR(20) NOT NULL,
         photo_url TEXT,
@@ -46,18 +46,18 @@ async function initializeDatabase() {
     console.log('Database tables verified/created successfully.');
 
     // Seed default users if users table is empty
-    const usersCount = await db.query('SELECT COUNT(*) FROM users');
+    const usersCount = await db.query('SELECT COUNT(*) FROM factory.users');
     if (parseInt(usersCount.rows[0].count) === 0) {
       console.log('Seeding default users...');
       const adminPasswordHash = bcrypt.hashSync('admin123', 10);
       const workerPasswordHash = bcrypt.hashSync('worker123', 10);
 
       await db.query(
-        'INSERT INTO users (username, password, role) VALUES ($1, $2, $3)',
+        'INSERT INTO factory.users (username, password, role) VALUES ($1, $2, $3)',
         ['admin', adminPasswordHash, 'admin']
       );
       await db.query(
-        'INSERT INTO users (username, password, role) VALUES ($1, $2, $3)',
+        'INSERT INTO factory.users (username, password, role) VALUES ($1, $2, $3)',
         ['worker', workerPasswordHash, 'worker']
       );
       console.log('Default users seeded: admin/admin123 and worker/worker123');
@@ -108,7 +108,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 
   try {
-    const result = await db.query('SELECT * FROM users WHERE username = $1', [username.toLowerCase().trim()]);
+    const result = await db.query('SELECT * FROM factory.users WHERE username = $1', [username.toLowerCase().trim()]);
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
@@ -143,7 +143,7 @@ app.post('/api/auth/login', async (req, res) => {
 // GET /api/auth/me
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
-    const result = await db.query('SELECT id, username, role FROM users WHERE id = $1', [req.user.id]);
+    const result = await db.query('SELECT id, username, role FROM factory.users WHERE id = $1', [req.user.id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
@@ -161,8 +161,8 @@ app.get('/api/services', authenticateToken, async (req, res) => {
   try {
     let queryText = `
       SELECT s.*, u.username as worker_name 
-      FROM services s
-      LEFT JOIN users u ON s.worker_id = u.id
+      FROM factory.services s
+      LEFT JOIN factory.users u ON s.worker_id = u.id
     `;
     const params = [];
 
@@ -191,7 +191,7 @@ app.post('/api/services', authenticateToken, async (req, res) => {
 
   try {
     const result = await db.query(
-      `INSERT INTO services (plate, photo_url, service_type, price, status, worker_id)
+      `INSERT INTO factory.services (plate, photo_url, service_type, price, status, worker_id)
        VALUES ($1, $2, $3, $4, 'pending', $5)
        RETURNING *`,
       [plate.toUpperCase().trim(), photo_url, service_type, price, req.user.id]
@@ -211,7 +211,7 @@ app.put('/api/services/:id', authenticateToken, async (req, res) => {
 
   try {
     // Check if service exists
-    const checkResult = await db.query('SELECT * FROM services WHERE id = $1', [id]);
+    const checkResult = await db.query('SELECT * FROM factory.services WHERE id = $1', [id]);
     if (checkResult.rows.length === 0) {
       return res.status(404).json({ error: 'Servicio no encontrado' });
     }
@@ -257,7 +257,7 @@ app.put('/api/services/:id', authenticateToken, async (req, res) => {
 
     values.push(id);
     const updateQuery = `
-      UPDATE services 
+      UPDATE factory.services 
       SET ${fields.join(', ')} 
       WHERE id = $${valIndex} 
       RETURNING *
@@ -275,7 +275,7 @@ app.put('/api/services/:id', authenticateToken, async (req, res) => {
 app.delete('/api/services/:id', authenticateToken, requireRole(['admin']), async (req, res) => {
   const { id } = req.params;
   try {
-    const result = await db.query('DELETE FROM services WHERE id = $1 RETURNING *', [id]);
+    const result = await db.query('DELETE FROM factory.services WHERE id = $1 RETURNING *', [id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Servicio no encontrado' });
     }
@@ -291,7 +291,7 @@ app.delete('/api/services/:id', authenticateToken, requireRole(['admin']), async
 // GET /api/users (Admin only)
 app.get('/api/users', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
-    const result = await db.query('SELECT id, username, role FROM users ORDER BY username ASC');
+    const result = await db.query('SELECT id, username, role FROM factory.users ORDER BY username ASC');
     res.json(result.rows);
   } catch (error) {
     console.error('Error al obtener usuarios:', error);
@@ -311,14 +311,14 @@ app.post('/api/users', authenticateToken, requireRole(['admin']), async (req, re
   }
 
   try {
-    const userExists = await db.query('SELECT * FROM users WHERE username = $1', [username.toLowerCase().trim()]);
+    const userExists = await db.query('SELECT * FROM factory.users WHERE username = $1', [username.toLowerCase().trim()]);
     if (userExists.rows.length > 0) {
       return res.status(400).json({ error: 'El nombre de usuario ya está registrado' });
     }
 
     const passwordHash = bcrypt.hashSync(password, 10);
     const result = await db.query(
-      'INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING id, username, role',
+      'INSERT INTO factory.users (username, password, role) VALUES ($1, $2, $3) RETURNING id, username, role',
       [username.toLowerCase().trim(), passwordHash, role]
     );
 
@@ -336,35 +336,35 @@ app.get('/api/reports/summary', authenticateToken, requireRole(['admin']), async
   try {
     // 1. Total revenue today
     const revenueTodayRes = await db.query(
-      "SELECT COALESCE(SUM(price), 0) as total FROM services WHERE created_at >= CURRENT_DATE"
+      "SELECT COALESCE(SUM(price), 0) as total FROM factory.services WHERE created_at >= CURRENT_DATE"
     );
     const revenueToday = parseFloat(revenueTodayRes.rows[0].total);
 
     // 2. Total services today
     const servicesTodayRes = await db.query(
-      "SELECT COUNT(*) as count FROM services WHERE created_at >= CURRENT_DATE"
+      "SELECT COUNT(*) as count FROM factory.services WHERE created_at >= CURRENT_DATE"
     );
     const servicesToday = parseInt(servicesTodayRes.rows[0].count);
 
     // 3. Overall services count
-    const totalServicesRes = await db.query("SELECT COUNT(*) as count FROM services");
+    const totalServicesRes = await db.query("SELECT COUNT(*) as count FROM factory.services");
     const totalServices = parseInt(totalServicesRes.rows[0].count);
 
     // 4. Overall revenue
-    const totalRevenueRes = await db.query("SELECT COALESCE(SUM(price), 0) as total FROM services");
+    const totalRevenueRes = await db.query("SELECT COALESCE(SUM(price), 0) as total FROM factory.services");
     const totalRevenue = parseFloat(totalRevenueRes.rows[0].total);
 
     // 5. Status distribution
     const statusDistRes = await db.query(
-      "SELECT status, COUNT(*) as count FROM services GROUP BY status"
+      "SELECT status, COUNT(*) as count FROM factory.services GROUP BY status"
     );
     const statusDistribution = statusDistRes.rows;
 
     // 6. Worker performance (services and earnings per worker)
     const workerPerformanceRes = await db.query(`
       SELECT u.id, u.username, COUNT(s.id) as services_count, COALESCE(SUM(s.price), 0) as total_earnings
-      FROM users u
-      LEFT JOIN services s ON u.id = s.worker_id
+      FROM factory.users u
+      LEFT JOIN factory.services s ON u.id = s.worker_id
       GROUP BY u.id, u.username
       ORDER BY total_earnings DESC
     `);
@@ -373,7 +373,7 @@ app.get('/api/reports/summary', authenticateToken, requireRole(['admin']), async
     // 7. Revenue by service type
     const serviceTypeDistRes = await db.query(`
       SELECT service_type, COUNT(*) as count, COALESCE(SUM(price), 0) as total_revenue
-      FROM services
+      FROM factory.services
       GROUP BY service_type
       ORDER BY total_revenue DESC
     `);
