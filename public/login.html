@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar Sesión | Carwash Premium</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/auth.js"></script>
+  <script>
+    // Redirect if already logged in
+    if (Auth.isLoggedIn()) {
+      window.location.href = '/dashboard.html';
+    }
+  </script>
+</head>
+<body>
+  <div class="login-container">
+    <div class="card login-card">
+      <div class="logo-section">
+        <div class="logo-icon">
+          <!-- Car Icon SVG -->
+          <svg viewBox="0 0 24 24" width="32" height="32">
+            <path d="M18.92 11.01C18.72 10.42 18.16 10 17.5 10H6.5c-.66 0-1.21.42-1.42 1.01L3 17v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 12h10.3c.26 0 .47.17.55.42L19 16H5l1.3-3.58c.08-.25.29-.42.55-.42zM7.5 21c-.83 0-1.5-.67-1.5-1.5S6.67 18 7.5 18s1.5.67 1.5 1.5S8.33 21 7.5 21zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM3 6.01c0 1.1.9 2 2 2s2-.9 2-2V3.02L3 6.01zM21 6.01L17 3.02v2.99c0 1.1.9 2 2 2s2-.9 2-2zM12 4.02C12 5.12 11.1 6 10 6H8.5L12 3.02V4.02zm3.5 1.98H14V3.02l3.5 2.98z" />
+          </svg>
+        </div>
+        <h2>Carwash Premium</h2>
+        <p>Sistema de Control y Gestión de Servicios</p>
+      </div>
+
+      <form id="loginForm">
+        <!-- Error Message Container -->
+        <div id="errorMessage" style="display: none; background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.85rem; margin-bottom: 1.25rem; text-align: center; font-weight: 600;">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="username">Usuario</label>
+          <div class="input-container">
+            <input type="text" id="username" placeholder="Ingresa tu usuario" required autocomplete="username">
+            <span class="input-icon">
+              <!-- User Icon -->
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Contraseña</label>
+          <div class="input-container">
+            <input type="password" id="password" placeholder="Ingresa tu contraseña" required autocomplete="current-password">
+            <span class="input-icon">
+              <!-- Lock Icon -->
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </span>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="submitBtn" style="margin-top: 1rem;">
+          <span id="btnText">Iniciar Sesión</span>
+          <span id="btnSpinner" class="loader" style="display: none; border-width: 2px; width: 16px; height: 16px; border-left-color: #fff;"></span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/js/login.js"></script>
+</body>
+</html>
