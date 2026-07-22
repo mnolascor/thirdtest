@@ -524,11 +524,6 @@ function setupWorkerFormEvents() {
       service_type = document.getElementById('customServiceName').value.trim();
     }
 
-    if (!capturedPhotoBase64) {
-      showToast('Por favor captura o sube una foto de la placa.', 'warning');
-      return;
-    }
-
     const submitBtn = document.getElementById('submitServiceBtn');
     submitBtn.disabled = true;
     submitBtn.textContent = 'Guardando...';
@@ -588,56 +583,80 @@ function handlePhotoFile(input) {
   const file = input.files[0];
   if (!file) return;
 
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    const base64 = e.target.result;
-    
-    // Compress image client side (reduces size to max 640px wide at 0.7 quality)
-    const compressed = await compressImage(base64);
-    
-    capturedPhotoBase64 = compressed;
-    
-    // Display preview
-    const photoPreview = document.getElementById('photoPreview');
-    photoPreview.src = compressed;
-    photoPreview.style.display = 'block';
-    
-    showToast('Foto cargada y optimizada', 'success');
-  };
-  reader.readAsDataURL(file);
+  // Use Object URL instead of FileReader.readAsDataURL.
+  // This loads instantly and saves massive amounts of RAM in mobile browsers.
+  const objectUrl = URL.createObjectURL(file);
+  
+  // Wrap in a short timeout to prevent UI thread stuttering
+  setTimeout(async () => {
+    try {
+      const compressed = await compressImage(objectUrl);
+      capturedPhotoBase64 = compressed;
+      
+      // Display preview
+      const photoPreview = document.getElementById('photoPreview');
+      photoPreview.src = compressed;
+      photoPreview.style.display = 'block';
+      
+      showToast('Foto cargada y optimizada', 'success');
+    } catch (error) {
+      console.error('Error compressing uploaded file:', error);
+      showToast('Error al procesar la imagen.', 'danger');
+    }
+  }, 50);
 }
 
-function compressImage(base64Str) {
-  return new Promise((resolve) => {
+function compressImage(imageSource) {
+  return new Promise((resolve, reject) => {
     const img = new Image();
-    img.src = base64Str;
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const MAX_WIDTH = 640;
-      const MAX_HEIGHT = 480;
-      let width = img.width;
-      let height = img.height;
+      try {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 640;
+        const MAX_HEIGHT = 480;
+        let width = img.width;
+        let height = img.height;
 
-      if (width > height) {
-        if (width > MAX_WIDTH) {
-          height *= MAX_WIDTH / width;
-          width = MAX_WIDTH;
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
         }
-      } else {
-        if (height > MAX_HEIGHT) {
-          width *= MAX_HEIGHT / height;
-          height = MAX_HEIGHT;
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Output optimized JPEG (compressed ~ 0.6 quality to keep it fast & light)
+        const result = canvas.toDataURL('image/jpeg', 0.6);
+        
+        // Revoke the object URL if it was a blob URL to release browser memory
+        if (imageSource.startsWith('blob:')) {
+          URL.revokeObjectURL(imageSource);
         }
+        
+        resolve(result);
+      } catch (err) {
+        if (imageSource.startsWith('blob:')) {
+          URL.revokeObjectURL(imageSource);
+        }
+        reject(err);
       }
-
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, width, height);
-      
-      // Output optimized JPEG (compressed ~ 0.7 quality)
-      resolve(canvas.toDataURL('image/jpeg', 0.7));
     };
+    img.onerror = (err) => {
+      if (imageSource.startsWith('blob:')) {
+        URL.revokeObjectURL(imageSource);
+      }
+      reject(err);
+    };
+    img.src = imageSource;
   });
 }
 
